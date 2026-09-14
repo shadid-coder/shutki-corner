@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function SiteFooter() {
   return (
     <footer className="border-t border-beige-200 bg-white mt-12">
-      <div className="container-app py-10 text-sm">
+      <div className="container-app py-10 pb-28 md:pb-10 text-sm">
         
         {/* মেইন ফুটার গ্রিড */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 text-center sm:text-left">
@@ -36,7 +36,7 @@ export default function SiteFooter() {
             Developed by 
             <span className="font-semibold text-navy-800">it_shadid</span>
             <span className="text-navy-300">|</span>
-            <a href="shadid2023@gmail.com" className="text-sea-600 hover:underline font-medium">
+            <a href="mailto:shadid2023@gmail.com" className="text-sea-600 hover:underline font-medium">
               shadid2023@gmail.com
             </a>
           </p>

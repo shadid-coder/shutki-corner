@@ -11,7 +11,7 @@ export default function TermsPage() {
       <p className="mt-2">অর্ডার নিশ্চিত করার আগে দয়া করে পণ্যের নাম, পরিমাণ ও ডেলিভারি ঠিকানা যাচাই করে নিন।</p>
 
       <h2 className="mt-6 font-semibold text-navy-950">পেমেন্ট</h2>
-      <p className="mt-2">বর্তমানে শুধু ক্যাশ অন ডেলিভারি সুবিধা চালু আছে।</p>
+      <p className="mt-2">বর্তমানে শুধু ক্যাশ অন ডেলিভারি এবং বিকাশ/নগদ ম্যানুয়াল পেমেন্ট সুবিধা চালু আছে।</p>
 
       <h2 className="mt-6 font-semibold text-navy-950">রিভিউ নীতি</h2>
       <p className="mt-2">

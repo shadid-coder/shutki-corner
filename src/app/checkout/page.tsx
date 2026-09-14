@@ -256,7 +256,7 @@ export default function CheckoutPage() {
                   </p>
                   <p>অনুগ্রহ করে নিচের নাম্বারে <strong>সেন্ড মানি</strong> করুন:</p>
                   {/* ⚠️ নিচের নাম্বারটি আপনার নিজের বিকাশ/নগদ নাম্বার দিয়ে পরিবর্তন করুন */}
-                  <p className="text-lg font-bold text-navy-950 mt-1">📱 017XXXXXXXX</p> 
+                  <p className="text-lg font-bold text-navy-950 mt-1">📱 01873211190</p> 
                   <p className="text-xs text-navy-500 mt-1">টাকা পাঠানোর পর নিচের তথ্যগুলো পূরণ করুন।</p>
                 </div>
                 
