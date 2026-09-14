@@ -1,0 +1,360 @@
+// Shutki Corner — Database Schema
+// Run `npx prisma migrate dev --name init` after configuring DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users & Auth ----------
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses     Address[]
+  cart          Cart?
+  orders        Order[]
+  reviews       Review[]
+  reviewReports ReviewReport[]
+  notifications Notification[]
+  adminProfile  AdminUser?
+  otpCodes      OtpCode[]
+  auditLogs     AuditLog[]       @relation("AdminAuditLogs")
+  reviewAudits  ReviewAuditLog[] @relation("AdminReviewAudits")
+}
+
+// One-time-passcode records for phone login. In dev these are logged to
+// console instead of sent via SMS — see src/lib/sms.ts.
+model OtpCode {
+  id        String   @id @default(cuid())
+  userPhone String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  User      User?    @relation(fields: [userPhone], references: [phone])
+
+  @@index([userPhone])
+}
+
+model AdminUser {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  permissions String[] // e.g. ["products:write", "orders:write", "reviews:moderate"]
+  createdAt   DateTime @default(now())
+}
+
+// ---------- Addresses ----------
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  label     String? // e.g. "বাসা", "অফিস"
+  district  String
+  upazila   String
+  landmark  String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  orders Order[]
+}
+
+// ---------- Catalog ----------
+
+model Category {
+  id       String    @id @default(cuid())
+  nameBn   String
+  nameEn   String
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  slug          String   @unique
+  nameBn        String
+  nameEn        String
+  shortDescBn   String
+  descriptionBn String
+  storageInfoBn String?
+  originBn      String?
+  images        String[] // storage URLs
+  isArchived    Boolean  @default(false)
+  isDemo        Boolean  @default(false) // seed/demo data marker — never shown as "real" in prod copy
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  variants ProductVariant[]
+  reviews  Review[]
+}
+
+model ProductVariant {
+  id          String  @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  weightGrams Int // 250, 500, 1000, or custom
+  label       String // "250g", "500g", "1kg", custom label
+  price       Decimal @db.Decimal(10, 2)
+  stockQty    Int     @default(0)
+  sku         String  @unique
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+// ---------- Cart ----------
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id])
+  sessionId String?  @unique // for guest carts, cookie-based
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  qty       Int
+
+  @@unique([cartId, variantId])
+}
+
+// ---------- Orders ----------
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  MANUAL_BKASH
+  MANUAL_NAGAD
+  ONLINE_GATEWAY // reserved for future integration
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNumber    String      @unique // human-facing, e.g. SC-20260910-0001
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  addressId      String
+  address        Address     @relation(fields: [addressId], references: [id])
+  status         OrderStatus @default(PENDING)
+  subtotal       Decimal     @db.Decimal(10, 2)
+  deliveryCharge Decimal     @db.Decimal(10, 2)
+  total          Decimal     @db.Decimal(10, 2)
+  deliveryNote   String?
+  contactMethod  String? // "call" | "whatsapp" | "sms"
+  paymentMethod  PaymentMethod
+  trxId          String?
+  senderPhone    String? 
+  idempotencyKey String      @unique // prevents duplicate submissions from client retries
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  // Set once, the moment status first transitions to DELIVERED (see
+  // src/app/admin/orders/actions.ts). Deliberately separate from
+  // `updatedAt`, which changes on any field update and would give the
+  // review-reminder scheduler a wrong "days since delivered" if the
+  // order were touched again for an unrelated reason after delivery.
+  deliveredAt    DateTime?
+
+  items   OrderItem[]
+  payment Payment?
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id])
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  productNameSnapshotBn String
+  variantLabelSnapshot  String
+  unitPrice    Decimal @db.Decimal(10, 2)
+  qty          Int
+
+  review Review?
+
+  @@index([orderId])
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  order     Order         @relation(fields: [orderId], references: [id])
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  reference String? // manual txn id for bKash/Nagad, or gateway ref later
+  createdAt DateTime      @default(now())
+}
+
+// ---------- Reviews ----------
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+model Review {
+  id          String       @id @default(cuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id])
+  orderItemId String       @unique // enforces one review per purchased line item
+  orderItem   OrderItem    @relation(fields: [orderItemId], references: [id])
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  rating      Int // 1-5, validated in application layer
+  bodyBn      String
+  photoUrl    String?
+  isVerified  Boolean      @default(true) // always true given orderItemId linkage; kept explicit for display logic
+  status      ReviewStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  editedAt    DateTime?
+  editLockedAt DateTime? // set = createdAt + configurable edit window
+  // Soft delete: set by the review's own author via DELETE
+  // /api/reviews/[reviewId]. The row (and any ReviewAuditLog referencing
+  // it) is kept for admin/audit purposes, but every public-facing query
+  // filters `deletedAt: null` so a deleted review is never shown again —
+  // see src/lib/queries.ts, src/components/ReviewList.tsx,
+  // src/app/page.tsx, and src/app/admin/reviews/page.tsx.
+  deletedAt   DateTime?
+
+  reports   ReviewReport[]
+  auditLogs ReviewAuditLog[]
+
+  @@index([productId, status])
+}
+
+enum ReportReason {
+  SPAM
+  ABUSIVE
+  IRRELEVANT
+  FAKE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTIONED
+}
+
+model ReviewReport {
+  id             String       @id @default(cuid())
+  reviewId       String
+  review         Review       @relation(fields: [reviewId], references: [id])
+  reporterUserId String
+  reporter       User         @relation(fields: [reporterUserId], references: [id])
+  reason         ReportReason
+  note           String?
+  status         ReportStatus @default(OPEN)
+  createdAt      DateTime     @default(now())
+}
+
+// Every admin change to a review's rating/status/body is logged here.
+// Admins can never silently alter a customer's rating.
+model ReviewAuditLog {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id])
+  adminId   String
+  admin     User     @relation("AdminReviewAudits", fields: [adminId], references: [id])
+  action    String // "approve" | "reject" | "hide" | "restore"
+  beforeJson Json
+  afterJson  Json
+  reason    String? // required for reject/hide, shown nowhere to other customers
+  createdAt DateTime @default(now())
+}
+
+// ---------- Notifications ----------
+
+enum NotificationType {
+  ORDER_CONFIRMED
+  ORDER_STATUS_CHANGED
+  REVIEW_REQUEST
+  REVIEW_REMINDER
+  REVIEW_REMINDER_DISMISSED
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  payload   Json
+  sentAt    DateTime?
+  createdAt DateTime         @default(now())
+}
+
+// ---------- Delivery & Settings ----------
+
+model DeliveryZone {
+  id       String  @id @default(cuid())
+  district String
+  upazila  String?
+  charge   Decimal @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  @@unique([district, upazila])
+}
+
+model SiteSetting {
+  key   String @id
+  value Json
+}
+
+// ---------- Admin Audit Log (non-review actions) ----------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation("AdminAuditLogs", fields: [adminId], references: [id])
+  action     String // "product:update" | "order:status_change" | ...
+  entity     String
+  entityId   String
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now())
+}
