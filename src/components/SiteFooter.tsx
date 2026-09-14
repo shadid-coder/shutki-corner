@@ -36,7 +36,7 @@ export default function SiteFooter() {
             Developed by 
             <span className="font-semibold text-navy-800">it_shadid</span>
             <span className="text-navy-300">|</span>
-            <a href="mailto:your-email@example.com" className="text-sea-600 hover:underline font-medium">
+            <a href="shadid2023@gmail.com" className="text-sea-600 hover:underline font-medium">
               shadid2023@gmail.com
             </a>
           </p>
