@@ -29,6 +29,25 @@ export default async function AccountPage() {
           </div>
         </div>
 
+
+{/* 👇 অ্যাডমিনদের জন্য বিশেষ বাটন */}
+{session.role === 'ADMIN' && (
+  <Link href="/admin" className="block bg-navy-900 text-white p-5 rounded-2xl shadow-sm hover:bg-navy-950 transition-all group hover:-translate-y-0.5">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+         <div className="bg-white/20 p-3 rounded-xl text-2xl">👑</div>
+         <div>
+           <h3 className="font-semibold text-lg">অ্যাডমিন প্যানেল</h3>
+           <p className="text-sm text-white/80 mt-0.5">ড্যাশবোর্ডে যান এবং অর্ডার ম্যানেজ করুন</p>
+         </div>
+      </div>
+      <span className="text-white/60 group-hover:text-white transition-colors text-xl">→</span>
+    </div>
+  </Link>
+)}
+{/* 👆 অ্যাডমিন বাটন শেষ */}
+
+
         {/* ডানদিক: নেভিগেশন লিংক ও অ্যাকশন */}
         <div className="md:col-span-2 space-y-4">
           
