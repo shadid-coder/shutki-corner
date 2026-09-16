@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { updateProduct } from '../../actions';
 import { notFound } from 'next/navigation';
+import ImageUpload from '@/components/ImageUpload';
+
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const product = await prisma.product.findUnique({
@@ -38,7 +40,7 @@ export default async function EditProductPage({ params }: { params: { id: string
         <input name="storageInfoBn" defaultValue={product.storageInfoBn || ''} placeholder="সংরক্ষণ পদ্ধতি" className="input-field" />
         <input name="originBn" defaultValue={product.originBn || ''} placeholder="উৎস" className="input-field" />
         
-        <input name="imageUrl" defaultValue={product.images[0] || ''} placeholder="ছবির URL" className="input-field" />
+       <ImageUpload initialUrl={product.images[0] || ''} />
 
         <div className="grid grid-cols-2 gap-3">
           <input type="hidden" name="v250Id" value={v250?.id} />

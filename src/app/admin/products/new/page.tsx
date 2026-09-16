@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { createProduct } from '../actions';
 import { redirect } from 'next/navigation';
+import ImageUpload from '@/components/ImageUpload';
+
 
 export default async function NewProductPage() {
   const categories = await prisma.category.findMany();
@@ -57,7 +59,7 @@ export default async function NewProductPage() {
         <textarea name="descriptionBn" required placeholder="বিস্তারিত বিবরণ" rows={4} className="input-field" />
         <input name="storageInfoBn" placeholder="সংরক্ষণ পদ্ধতি" className="input-field" />
 <input name="originBn" placeholder="উৎস" className="input-field" />
-        <input name="imageUrl" placeholder="ছবির URL" className="input-field" />
+       <ImageUpload />
 
         <div className="grid grid-cols-2 gap-3">
           <input name="price250" type="number" step="0.01" required placeholder="250g মূল্য" className="input-field" />
